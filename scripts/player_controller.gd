@@ -16,6 +16,7 @@ const VIEW_KICK_DEG := 2.0
 const VIEW_KICK_RETURN_DEG := 18.0
 const PITCH_LIMIT_DEG := 89.0
 const WORLD_MASK := 1
+const INTERVENTION_SCENE := preload("res://assets/weapons/FirstTry_Intervention_Sniper.glb")
 
 var confirmed_hits_serial: int = 0
 var last_collider_name: String = ""
@@ -32,6 +33,7 @@ var _cooldown: float = 0.0
 var _tracer_left: float = 0.0
 var _ads: bool = false
 var _booted: bool = false
+var _rifle: Node3D
 
 
 static func shot_direction(forward: Vector3) -> Vector3:
@@ -270,6 +272,8 @@ func _apply_fov() -> void:
 		_camera.fov = ads_fov_for(base)
 	else:
 		_camera.fov = base
+	if _rifle != null:
+		_rifle.visible = not _ads
 
 
 func _apply_camera_pose() -> void:
@@ -346,31 +350,20 @@ func _build_tracer() -> void:
 
 
 func _build_rifle() -> void:
-	var rifle := CSGCombiner3D.new()
+	var rifle := Node3D.new()
 	rifle.name = "Rifle"
-	rifle.use_collision = false
 	rifle.position = Vector3(0.26, -0.22, -0.42)
+	rifle.rotation = Vector3.ZERO
+	rifle.scale = Vector3(0.50, 0.50, 0.50)
 	_camera.add_child(rifle)
-	var dark := _gun_mat(Color("#1F2937"), 0.45)
-	var steel := _gun_mat(Color("#111827"), 0.35)
-	_gun_box(rifle, "Receiver", Vector3(0.07, 0.1, 0.36), Vector3.ZERO, dark)
-	_gun_box(rifle, "Barrel", Vector3(0.028, 0.028, 0.42), Vector3(0.0, 0.02, -0.36), steel)
-	_gun_box(rifle, "Stock", Vector3(0.055, 0.09, 0.16), Vector3(0.0, 0.0, 0.24), dark)
-	_gun_box(rifle, "Scope", Vector3(0.04, 0.046, 0.16), Vector3(0.0, 0.08, -0.02), steel)
-
-
-func _gun_mat(color: Color, metallic: float) -> StandardMaterial3D:
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = color
-	mat.roughness = 0.42
-	mat.metallic = metallic
-	return mat
-
-
-func _gun_box(parent: Node, box_name: String, size: Vector3, pos: Vector3, mat: StandardMaterial3D) -> void:
-	var box := CSGBox3D.new()
-	box.name = box_name
-	box.size = size
-	box.position = pos
-	box.material = mat
-	parent.add_child(box)
+	var imported := INTERVENTION_SCENE.instantiate()
+	var mesh := imported.get_node("FirstTry_SniperRifle") as MeshInstance3D
+	mesh.owner = null
+	imported.remove_child(mesh)
+	mesh.position = Vector3.ZERO
+	mesh.rotation = Vector3.ZERO
+	mesh.scale = Vector3.ONE
+	mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	rifle.add_child(mesh)
+	imported.free()
+	_rifle = rifle

@@ -160,6 +160,21 @@ func _test_arena() -> void:
 		_expect(is_equal_approx(marker.global_position.y, heights[index]), "Spawn_%d Y is %.0f" % [index + 1, heights[index]])
 
 	await _until_grounded(player)
+	_expect(FileAccess.file_exists("res://assets/weapons/FirstTry_Intervention_Sniper.glb"), "intervention glb is in the project")
+	var camera := player.get_node("CameraPivot/Camera3D") as Camera3D
+	var rifle := camera.get_node_or_null("Rifle") as Node3D
+	_expect(rifle != null, "Camera3D has a Rifle child")
+	var sniper_mesh: MeshInstance3D = null
+	if rifle != null:
+		sniper_mesh = rifle.find_child("FirstTry_SniperRifle", true, false) as MeshInstance3D
+	_expect(sniper_mesh != null, "Rifle has a FirstTry_SniperRifle mesh")
+	var csg_leftover := false
+	for node in camera.find_children("*", "", true, false):
+		if node is CSGCombiner3D:
+			csg_leftover = true
+		if node is CSGBox3D and node.name in ["Receiver", "Barrel", "Stock", "Scope"]:
+			csg_leftover = true
+	_expect(not csg_leftover, "no CSG placeholder rifle under the camera")
 	_expect(player.is_on_floor(), "player starts on the catwalk")
 	_expect(player.get_clip().state == ClipState.State.READY, "boot clip is READY")
 	_expect(player.get_clip().active_drop == 1, "boot drop is 1")
@@ -230,14 +245,22 @@ func _test_arena() -> void:
 	await process_frame
 	_expect(player.is_ads(), "ADS is held")
 	_expect(is_equal_approx(player.camera_fov(), 44.0), "ADS fov is max(30, base * 0.40)")
+	_expect(rifle != null and not rifle.visible, "ADS hides the rifle")
 	Input.action_release("ads")
 	await process_frame
 	await process_frame
 	_expect(not player.is_ads(), "ADS released")
 	_expect(is_equal_approx(player.camera_fov(), 110.0), "releasing ADS restores hip fov")
+	_expect(rifle != null and rifle.visible, "releasing ADS shows the rifle")
 	settings.restore_defaults()
 	await process_frame
 	_expect(is_equal_approx(player.camera_fov(), 90.0), "default fov returns to 90")
+	player.set_ads_held(true)
+	_expect(rifle != null and not rifle.visible, "set_ads_held hides the rifle")
+	_expect(is_equal_approx(player.camera_fov(), PlayerController.ads_fov_for(90.0)), "set_ads_held fov is ads_fov_for")
+	player.set_ads_held(false)
+	_expect(rifle != null and rifle.visible, "set_ads_held release shows the rifle")
+	_expect(is_equal_approx(player.camera_fov(), 90.0), "set_ads_held release restores hip fov")
 
 	hud.set_paused(true)
 	_expect(self.paused, "settings pause the world")
